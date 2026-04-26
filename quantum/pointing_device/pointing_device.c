@@ -323,6 +323,11 @@ __attribute__((weak)) bool pointing_device_task(void) {
         shared_mouse_report = pointing_device_adjust_by_defines(shared_mouse_report);
     }
     local_mouse_report = is_keyboard_left() ? pointing_device_task_combined_kb(local_mouse_report, shared_mouse_report) : pointing_device_task_combined_kb(shared_mouse_report, local_mouse_report);
+#    ifdef HK_SPLIT_POINTING_REMOTE_EVENT_SYNC
+    // Event-synced remote reports are consumed once on the master to avoid replaying the same
+    // slave-side motion packet every scan until another remote event arrives.
+    shared_mouse_report = (report_mouse_t){};
+#    endif
 #else
     local_mouse_report = pointing_device_adjust_by_defines(local_mouse_report);
 #endif

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Builds the paired UF2s for the split Corne hk keymap.
+# Note: the trackball_trackpoint configuration uses a custom remote event sync path so a
+# right-side slave PS/2 trackpoint stays smooth when USB/master is on the left half.
+
 set -euo pipefail
 
 KEYBOARD="${KEYBOARD:-crkbd/rev1_rp2040}"

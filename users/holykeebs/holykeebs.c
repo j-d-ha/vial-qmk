@@ -101,6 +101,17 @@ static void hk_configure_cirque_common(hk_pointer_state_t* state) {
     state->pointer_sniping_multiplier = 1.0;
 }
 
+static bool hk_main_pointer_is_left(void) {
+    #ifdef HK_MAIN_POINTER_IS_LEFT
+        return true;
+    #elif defined(HK_MAIN_POINTER_IS_RIGHT)
+        return false;
+    #else
+        // Default behavior: bind `main` to the physical half that is acting as master.
+        return is_keyboard_left();
+    #endif
+}
+
 static hk_state_t init_state(void) {
     printf("init_state\n");
     hk_state_t state = {
@@ -171,7 +182,7 @@ static hk_state_t init_state(void) {
     #endif
 
     // TPS65 is only supported for unibody keyboards, so check that to know if we have a split keyboard.
-    if (state.main.pointer_kind != POINTER_KIND_TPS65 && is_keyboard_left()) {
+    if (state.main.pointer_kind != POINTER_KIND_TPS65 && hk_main_pointer_is_left()) {
         printf("init_state: left hand, swapping main and peripheral pointers\n");
         hk_pointer_kind temp = state.main.pointer_kind;
         state.main.pointer_kind = state.peripheral.pointer_kind;
@@ -486,9 +497,9 @@ report_mouse_t pointing_device_task_combined_user(report_mouse_t left_report, re
         return pointing_device_task_combined_keymap(report);
     }
 
-    // Use is_keyboard_left to know which report is main and which is peripheral.
-    hk_process_mouse_report(&g_hk_state.main, is_keyboard_left() ? &left_report : &right_report);
-    hk_process_mouse_report(&g_hk_state.peripheral, is_keyboard_left() ? &right_report : &left_report);
+    bool main_pointer_is_left = hk_main_pointer_is_left();
+    hk_process_mouse_report(&g_hk_state.main, main_pointer_is_left ? &left_report : &right_report);
+    hk_process_mouse_report(&g_hk_state.peripheral, main_pointer_is_left ? &right_report : &left_report);
 
     report_mouse_t report = pointing_device_combine_reports(left_report, right_report);
     g_hk_state.display.last_mouse = report;
@@ -714,9 +725,9 @@ void keyboard_post_init_user(void) {
     memset(&hk_eeprom_config, 0, sizeof(hk_eeprom_config_t));
     eeconfig_read_user_datablock(&hk_eeprom_config, 0, sizeof(hk_eeprom_config_t));
     printf("keyboard_post_init_user: reading eeprom, check: %u, version: %u\n", hk_eeprom_config.check, hk_eeprom_config.version);
-    if (!eeconfig_is_user_datablock_valid() || !hk_eeprom_config.check || hk_eeprom_config.version < 101) {
-        // Before version 101, reset the eeprom config to pick up current pointer defaults.
-        if (hk_eeprom_config.version < 101) {
+    if (!eeconfig_is_user_datablock_valid() || !hk_eeprom_config.check || hk_eeprom_config.version < 102) {
+        // Before version 102, reset the eeprom config to pick up current pointer-role defaults.
+        if (hk_eeprom_config.version < 102) {
             printf("keyboard_post_init_user: eeprom version not found (%u), resetting to defaults\n", hk_eeprom_config.version);
         } else if (!hk_eeprom_config.check) {
             printf("keyboard_post_init_user: eeprom check failed, resetting to defaults\n");
@@ -743,7 +754,7 @@ void                       eeconfig_init_user(void) {
 
     memset(&hk_eeprom_config, 0, sizeof(hk_eeprom_config_t));
     hk_eeprom_config.check = true;
-    hk_eeprom_config.version = 101; // Increment this when changing pointer defaults or the eeprom config structure.
+    hk_eeprom_config.version = 102; // Increment this when changing pointer defaults or the eeprom config structure.
     serialize_state_to_eeconfig(&hk_eeprom_config);
 
     eeconfig_init_keymap();

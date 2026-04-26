@@ -412,6 +412,11 @@ endif
 ifeq ($(strip $(POINTING_DEVICE)), trackball_trackpoint)
     OPT_DEFS += -DHK_POINTING_DEVICE_LEFT_PIMORONI
     OPT_DEFS += -DHK_POINTING_DEVICE_RIGHT_TRACKPOINT
+    OPT_DEFS += -DHK_MAIN_POINTER_IS_RIGHT
+    # When USB/master is forced to the left, the right-side PS/2 trackpoint becomes the remote
+    # pointing device. Use event-style split sync so movement packets are not missed between the
+    # slave updating shared memory and the master polling it, which otherwise feels very jittery.
+    OPT_DEFS += -DHK_SPLIT_POINTING_REMOTE_EVENT_SYNC
 
     POINTING_DEVICE_ENABLE = yes
     OPT_DEFS += -DSPLIT_POINTING_ENABLE
@@ -427,7 +432,7 @@ ifeq ($(strip $(POINTING_DEVICE)), trackball_trackpoint)
     endif
 
 	MSG_POINTING_DEVICE = trackball (left), trackpoint (right); built for side = $(SIDE)
-	MASTER_SIDE = right
+	MASTER_SIDE = left
 endif
 
 ifeq ($(strip $(POINTING_DEVICE)), trackpoint_tps43)

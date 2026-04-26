@@ -10,6 +10,8 @@
 - Left trackball = scroll.
 - Keep pointer logic in `users/holykeebs`.
 - Keep board wiring in `keyboards/*`.
+- Current working split behavior: USB/master on the left, but pointer roles stay physically fixed.
+- `trackball_trackpoint` uses custom remote event sync so the right-side slave PS/2 trackpoint stays smooth when the left half is master.
 
 ## Build
 - Script: `keyboards/crkbd/keymaps/hk/build_split.sh`.

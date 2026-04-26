@@ -32,6 +32,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 static uint8_t buttons_prev = 0;
 static report_mouse_t local_mouse_report = {};
 
+static bool ps2_mouse_can_access_device(void) {
+#if defined(SPLIT_POINTING_ENABLE) && defined(POINTING_DEVICE_COMBINED)
+    // In split combined pointing mode, the slave side may own a PS/2 device and must
+    // be allowed to initialize and poll it so its report can be forwarded to the master.
+    return true;
+#else
+    return is_keyboard_master();
+#endif
+}
+
 static inline void ps2_mouse_print_report(report_mouse_t *mouse_report);
 static inline void ps2_mouse_convert_report_to_hid(report_mouse_t *mouse_report);
 static inline void ps2_mouse_clear_report(report_mouse_t *mouse_report);
@@ -42,7 +52,7 @@ static inline void ps2_mouse_scroll_button_task(report_mouse_t *mouse_report);
 
 /* supports only 3 button mouse at this time */
 void ps2_mouse_init(void) {
-    if (!is_keyboard_master()) {
+    if (!ps2_mouse_can_access_device()) {
         return;
     }
 
@@ -93,7 +103,7 @@ void ps2_mouse_task(void) {
 }
 
 bool ps2_mouse_read(report_mouse_t* mouse_report) {
-    if (!is_keyboard_master()) {
+    if (!ps2_mouse_can_access_device()) {
         return false;
     }
 

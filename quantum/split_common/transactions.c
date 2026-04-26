@@ -705,6 +705,16 @@ static void st7565_handlers_slave(matrix_row_t master_matrix[], matrix_row_t sla
 
 #if defined(POINTING_DEVICE_ENABLE) && defined(SPLIT_POINTING_ENABLE)
 
+#ifdef HK_SPLIT_POINTING_REMOTE_EVENT_SYNC
+// For remote pointing devices such as a right-side PS/2 trackpoint on a left-master split,
+// checksum-based sync can miss short-lived non-zero reports because the slave may write motion
+// and then clear back to zero before the master polls. Treat remote motion as an event instead:
+// keep the most recent non-zero report on the slave and bump a report id when a new event arrives.
+static bool pointing_report_has_activity(const report_mouse_t* report) {
+    return report->buttons || report->x || report->y || report->v || report->h;
+}
+#endif
+
 static bool pointing_handlers_master(matrix_row_t master_matrix[], matrix_row_t slave_matrix[]) {
 #    if defined(POINTING_DEVICE_LEFT)
     if (is_keyboard_left()) {
@@ -715,13 +725,27 @@ static bool pointing_handlers_master(matrix_row_t master_matrix[], matrix_row_t 
         return true;
     }
 #    endif
-    static uint32_t last_update     = 0;
     static uint32_t last_cpi_update = 0;
     static uint16_t last_cpi        = 0;
     report_mouse_t  temp_state;
     uint16_t        temp_cpi;
-    bool            okay = read_if_checksum_mismatch(GET_POINTING_CHECKSUM, GET_POINTING_DATA, &last_update, &temp_state, &split_shmem->pointing.report, sizeof(temp_state));
+#ifdef HK_SPLIT_POINTING_REMOTE_EVENT_SYNC
+    static uint8_t last_report_id = 0;
+    uint8_t        curr_report_id = 0;
+    bool           okay           = transport_read(GET_POINTING_CHECKSUM, &curr_report_id, sizeof(curr_report_id));
+    // Only fetch a remote report when the slave published a new event.
+    if (okay && curr_report_id != last_report_id) {
+        okay &= transport_read(GET_POINTING_DATA, &temp_state, sizeof(temp_state));
+        if (okay) {
+            pointing_device_set_shared_report(temp_state);
+            last_report_id = curr_report_id;
+        }
+    }
+#else
+    static uint32_t last_update = 0;
+    bool            okay        = read_if_checksum_mismatch(GET_POINTING_CHECKSUM, GET_POINTING_DATA, &last_update, &temp_state, &split_shmem->pointing.report, sizeof(temp_state));
     if (okay) pointing_device_set_shared_report(temp_state);
+#endif
     temp_cpi = pointing_device_get_shared_cpi();
     if (temp_cpi) {
         split_shmem->pointing.cpi = temp_cpi;
@@ -764,9 +788,18 @@ static void pointing_handlers_slave(matrix_row_t master_matrix[], matrix_row_t s
         pointing_device_driver->set_cpi(pointing.cpi);
     }
 
+#ifdef HK_SPLIT_POINTING_REMOTE_EVENT_SYNC
+    report_mouse_t new_report = pointing_device_driver->get_report((report_mouse_t){0});
+    if (pointing_report_has_activity(&new_report)) {
+        pointing.report = new_report;
+        // Reuse checksum as a monotonically changing report id for event delivery.
+        pointing.checksum++;
+    }
+#else
     pointing.report = pointing_device_driver->get_report((report_mouse_t){0});
     // Now update the checksum given that the pointing has been written to
     pointing.checksum = crc8(&pointing.report, sizeof(report_mouse_t));
+#endif
 
     split_shared_memory_lock();
     memcpy(&split_shmem->pointing, &pointing, sizeof(split_slave_pointing_sync_t));
