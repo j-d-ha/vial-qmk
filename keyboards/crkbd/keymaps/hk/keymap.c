@@ -1,5 +1,7 @@
 #include QMK_KEYBOARD_H
 
+#include "dynamic_keymap.h"
+#include "eeconfig.h"
 #include "holykeebs.h"
 
 enum layers {
@@ -8,6 +10,85 @@ enum layers {
     _NAV,
     _HK,
 };
+
+#ifdef VIAL_COMBO_ENABLE
+#define HK_COMBO_MIGRATION_MAGIC   0x484B434DUL
+#define HK_COMBO_MIGRATION_VERSION 1
+
+typedef struct {
+    uint32_t magic;
+    uint8_t  version;
+    uint8_t  reserved[3];
+} hk_keymap_eeconfig_t;
+
+static const vial_combo_entry_t hk_default_combos[] = {
+    {{KC_C, KC_V, KC_NO, KC_NO}, LGUI(KC_V)},
+    {{KC_X, KC_C, KC_NO, KC_NO}, LGUI(KC_C)},
+    {{KC_X, KC_C, KC_V, KC_NO}, SGUI(KC_C)},
+    {{KC_Z, KC_X, KC_NO, KC_NO}, LGUI(KC_Z)},
+    {{KC_Z, KC_X, KC_C, KC_NO}, SGUI(KC_Z)},
+    {{KC_Z, KC_C, KC_NO, KC_NO}, LGUI(KC_X)},
+};
+
+static void hk_reset_vial_combos(void) {
+    const size_t combo_count = sizeof(hk_default_combos) / sizeof(hk_default_combos[0]);
+    vial_combo_entry_t blank = {0};
+
+    for (uint8_t i = 0; i < VIAL_COMBO_ENTRIES; ++i) {
+        dynamic_keymap_set_combo(i, &blank);
+    }
+
+    for (uint8_t i = 0; i < combo_count && i < VIAL_COMBO_ENTRIES; ++i) {
+        dynamic_keymap_set_combo(i, &hk_default_combos[i]);
+    }
+}
+
+static bool hk_combo_entry_is_blank(const vial_combo_entry_t *entry) {
+    if (entry->output != KC_NO) {
+        return false;
+    }
+
+    for (uint8_t i = 0; i < ARRAY_SIZE(entry->input); ++i) {
+        if (entry->input[i] != KC_NO) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool hk_any_vial_combos_configured(void) {
+    for (uint8_t i = 0; i < VIAL_COMBO_ENTRIES; ++i) {
+        vial_combo_entry_t entry = {0};
+
+        if (dynamic_keymap_get_combo(i, &entry) == 0 && !hk_combo_entry_is_blank(&entry)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void hk_migrate_vial_combos_if_needed(void) {
+    hk_keymap_eeconfig_t config = {0};
+
+    if (eeconfig_is_kb_datablock_valid()) {
+        eeconfig_read_kb_datablock(&config, 0, sizeof(config));
+    }
+
+    if (config.magic == HK_COMBO_MIGRATION_MAGIC && config.version >= HK_COMBO_MIGRATION_VERSION) {
+        return;
+    }
+
+    if (!hk_any_vial_combos_configured()) {
+        hk_reset_vial_combos();
+    }
+
+    config.magic = HK_COMBO_MIGRATION_MAGIC;
+    config.version = HK_COMBO_MIGRATION_VERSION;
+    eeconfig_update_kb_datablock(&config, 0, sizeof(config));
+}
+#endif
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_BASE] = LAYOUT_split_3x6_3(
@@ -43,3 +124,21 @@ const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
     [_HK]   = {ENCODER_CCW_CW(KC_VOLD, KC_VOLU), ENCODER_CCW_CW(KC_MPRV, KC_MNXT), ENCODER_CCW_CW(KC_UP,   KC_DOWN), ENCODER_CCW_CW(KC_RGHT, KC_LEFT)},
 };
 #endif
+
+void eeconfig_init_keymap(void) {
+#ifdef VIAL_COMBO_ENABLE
+    hk_reset_vial_combos();
+#endif
+}
+
+void keyboard_post_init_keymap(void) {
+#ifdef VIAL_COMBO_ENABLE
+    if (is_keyboard_master()) {
+        hk_migrate_vial_combos_if_needed();
+    }
+#endif
+
+#ifdef VIAL_ENABLE
+    vial_init();
+#endif
+}
