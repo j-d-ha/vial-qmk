@@ -21,19 +21,8 @@
 #endif
 
 #define _CONSTRAIN(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
-#ifdef MOUSE_EXTENDED_REPORT
-#    define XY_REPORT_MIN INT16_MIN
-#    define XY_REPORT_MAX INT16_MAX
-#    define HV_REPORT_MIN INT16_MIN
-#    define HV_REPORT_MAX INT16_MAX
-#else
-#    define XY_REPORT_MIN -127
-#    define XY_REPORT_MAX 127
-#    define HV_REPORT_MIN -127
-#    define HV_REPORT_MAX 127
-#endif
-#define CONSTRAIN_XY(val)      (mouse_xy_report_t) _CONSTRAIN(val, XY_REPORT_MIN, XY_REPORT_MAX)
-#define CONSTRAIN_HV(val)      (mouse_hv_report_t) _CONSTRAIN(val, HV_REPORT_MIN, HV_REPORT_MAX)
+#define CONSTRAIN_XY(val)      (mouse_xy_report_t) _CONSTRAIN(val, MOUSE_REPORT_XY_MIN, MOUSE_REPORT_XY_MAX)
+#define CONSTRAIN_HV(val)      (mouse_hv_report_t) _CONSTRAIN(val, MOUSE_REPORT_HV_MIN, MOUSE_REPORT_HV_MAX)
 
 static const char BL = '\xB0'; // Blank indicator character
 
@@ -44,6 +33,7 @@ static void deserialize_eeconfig_to_state(const hk_eeprom_config_t* config) {
     g_hk_state.main.cursor_mode = config->pointing.main_cursor_mode;
     g_hk_state.main.drag_scroll = config->pointing.main_drag_scroll;
     g_hk_state.main.scroll_lock = config->pointing.main_scroll_lock;
+    g_hk_state.main.scroll_direction_inverted = config->pointing.main_scroll_direction_inverted;
     g_hk_state.main.pointer_default_multiplier = config->pointing.main_default_multiplier / 100.0;
     g_hk_state.main.pointer_sniping_multiplier = config->pointing.main_sniping_multiplier / 100.0;
     g_hk_state.main.pointer_scroll_buffer_size = config->pointing.main_scroll_buffer_size;
@@ -51,6 +41,7 @@ static void deserialize_eeconfig_to_state(const hk_eeprom_config_t* config) {
     g_hk_state.peripheral.cursor_mode = config->pointing.peripheral_cursor_mode;
     g_hk_state.peripheral.drag_scroll = config->pointing.peripheral_drag_scroll;
     g_hk_state.peripheral.scroll_lock = config->pointing.peripheral_scroll_lock;
+    g_hk_state.peripheral.scroll_direction_inverted = config->pointing.peripheral_scroll_direction_inverted;
     g_hk_state.peripheral.pointer_default_multiplier = config->pointing.peripheral_default_multiplier / 100.0;
     g_hk_state.peripheral.pointer_sniping_multiplier = config->pointing.peripheral_sniping_multiplier / 100.0;
     g_hk_state.peripheral.pointer_scroll_buffer_size = config->pointing.peripheral_scroll_buffer_size;
@@ -60,6 +51,7 @@ static void serialize_state_to_eeconfig(hk_eeprom_config_t* config) {
     config->pointing.main_cursor_mode = g_hk_state.main.cursor_mode;
     config->pointing.main_drag_scroll = g_hk_state.main.drag_scroll;
     config->pointing.main_scroll_lock = g_hk_state.main.scroll_lock;
+    config->pointing.main_scroll_direction_inverted = g_hk_state.main.scroll_direction_inverted;
     config->pointing.main_default_multiplier = (int16_t)(g_hk_state.main.pointer_default_multiplier * 100);
     config->pointing.main_sniping_multiplier = (int16_t)(g_hk_state.main.pointer_sniping_multiplier * 100);
     config->pointing.main_scroll_buffer_size = g_hk_state.main.pointer_scroll_buffer_size;
@@ -67,6 +59,7 @@ static void serialize_state_to_eeconfig(hk_eeprom_config_t* config) {
     config->pointing.peripheral_cursor_mode = g_hk_state.peripheral.cursor_mode;
     config->pointing.peripheral_drag_scroll = g_hk_state.peripheral.drag_scroll;
     config->pointing.peripheral_scroll_lock = g_hk_state.peripheral.scroll_lock;
+    config->pointing.peripheral_scroll_direction_inverted = g_hk_state.peripheral.scroll_direction_inverted;
     config->pointing.peripheral_default_multiplier = (int16_t)(g_hk_state.peripheral.pointer_default_multiplier * 100);
     config->pointing.peripheral_sniping_multiplier = (int16_t)(g_hk_state.peripheral.pointer_sniping_multiplier * 100);
     config->pointing.peripheral_scroll_buffer_size = g_hk_state.peripheral.pointer_scroll_buffer_size;
@@ -77,6 +70,12 @@ static void write_eeconfig(void) {
     eeconfig_update_user_datablock(&hk_eeprom_config, 0, sizeof(hk_eeprom_config_t));
 
     printf("write_eeconfig: eeprom data written\n");
+}
+
+static void hk_configure_tps65_common(hk_pointer_state_t* state) {
+    state->pointer_default_multiplier = 1.25;
+    state->pointer_sniping_multiplier = 1.0;
+    state->pointer_scroll_buffer_size = 5;
 }
 
 static void hk_configure_tps43_common(hk_pointer_state_t* state) {
@@ -116,6 +115,7 @@ static hk_state_t init_state(void) {
             .cursor_mode = CURSOR_MODE_DEFAULT,
             .drag_scroll = false,
             .scroll_lock = SCROLL_LOCK_OFF,
+            .scroll_direction_inverted = false,
             .pointer_default_multiplier = 0,
             .pointer_sniping_multiplier = 0,
             .pointer_scroll_buffer_size = 0,
@@ -125,6 +125,7 @@ static hk_state_t init_state(void) {
             .cursor_mode = CURSOR_MODE_DEFAULT,
             .drag_scroll = false,
             .scroll_lock = SCROLL_LOCK_OFF,
+            .scroll_direction_inverted = false,
             .pointer_default_multiplier = 0,
             .pointer_sniping_multiplier = 0,
             .pointer_scroll_buffer_size = 0,
@@ -140,6 +141,10 @@ static hk_state_t init_state(void) {
     if (!state.is_main_side) {
         return state;
     }
+
+    #if defined(HK_POINTING_DEVICE_MIDDLE_TPS65)
+        state.main.pointer_kind = POINTER_KIND_TPS65;
+    #endif
 
     #ifdef HK_POINTING_DEVICE_RIGHT_PIMORONI
         state.main.pointer_kind = POINTER_KIND_PIMORONI_TRACKBALL;
@@ -165,7 +170,9 @@ static hk_state_t init_state(void) {
         state.peripheral.pointer_kind = POINTER_KIND_TPS43;
     #endif
 
-    if (is_keyboard_left()) {
+    // TPS65 is only supported for unibody keyboards, so check that to know if we have a split keyboard.
+    if (state.main.pointer_kind != POINTER_KIND_TPS65 && is_keyboard_left()) {
+        printf("init_state: left hand, swapping main and peripheral pointers\n");
         hk_pointer_kind temp = state.main.pointer_kind;
         state.main.pointer_kind = state.peripheral.pointer_kind;
         state.peripheral.pointer_kind = temp;
@@ -181,6 +188,9 @@ static hk_state_t init_state(void) {
             break;
         case POINTER_KIND_TPS43:
             hk_configure_tps43_common(&state.main);
+            break;
+        case POINTER_KIND_TPS65:
+            hk_configure_tps65_common(&state.main);
             break;
         case POINTER_KIND_PIMORONI_TRACKBALL:
             hk_configure_pimoroni_common(&state.main);
@@ -219,6 +229,7 @@ static hk_state_t init_state(void) {
             case POINTER_KIND_PIMORONI_TRACKBALL:
                 hk_configure_pimoroni_common(&state.peripheral);
                 state.peripheral.drag_scroll = true;
+                state.peripheral.scroll_direction_inverted = true;
                 break;
             default:
                 printf("init_state: unknown peripheral pointer kind\n");
@@ -270,6 +281,11 @@ void hk_process_scroll(const hk_pointer_state_t* pointer_state, report_mouse_t* 
         mouse_report->y = 0;
     }
 
+    if (pointer_state->scroll_direction_inverted) {
+        mouse_report->h = -mouse_report->h;
+        mouse_report->v = -mouse_report->v;
+    }
+
     if (pointer_state->pointer_scroll_buffer_size > 0) {
         static int16_t scroll_buffer_h = 0;
         static int16_t scroll_buffer_v = 0;
@@ -279,18 +295,28 @@ void hk_process_scroll(const hk_pointer_state_t* pointer_state, report_mouse_t* 
         mouse_report->h = 0;
         mouse_report->v = 0;
 
-        bool output_horizontal = pointer_state->scroll_lock == SCROLL_LOCK_HORIZONTAL || pointer_state->scroll_lock == SCROLL_LOCK_OFF;
-        bool output_vertical = pointer_state->scroll_lock == SCROLL_LOCK_VERTICAL || pointer_state->scroll_lock == SCROLL_LOCK_OFF;
+    if (abs(scroll_buffer_h) > pointer_state->pointer_scroll_buffer_size) {
+        mouse_report->h = scroll_buffer_h > 0 ? 1 : -1;
+        scroll_buffer_h = 0;
+    }
 
-        if (output_horizontal && abs(scroll_buffer_h) > pointer_state->pointer_scroll_buffer_size) {
-            mouse_report->h = scroll_buffer_h > 0 ? 1 : -1;
-            scroll_buffer_h = 0;
-        }
+    if (abs(scroll_buffer_v) > pointer_state->pointer_scroll_buffer_size) {
+        mouse_report->v = scroll_buffer_v > 0 ? 1 : -1;
+        scroll_buffer_v = 0;
+    }
+    }
 
-        if (output_vertical && abs(scroll_buffer_v) > pointer_state->pointer_scroll_buffer_size) {
-            mouse_report->v = scroll_buffer_v > 0 ? 1 : -1;
-            scroll_buffer_v = 0;
-        }
+    mouse_hv_report_t h = mouse_report->h;
+    mouse_hv_report_t v = mouse_report->v;
+    mouse_report->h = 0;
+    mouse_report->v = 0;
+
+    if (pointer_state->scroll_lock == SCROLL_LOCK_HORIZONTAL || pointer_state->scroll_lock == SCROLL_LOCK_OFF) {
+        mouse_report->h = h;
+    }
+
+    if (pointer_state->scroll_lock == SCROLL_LOCK_VERTICAL || pointer_state->scroll_lock == SCROLL_LOCK_OFF) {
+        mouse_report->v = v;
     }
 }
 
@@ -344,6 +370,7 @@ static float hk_pointer_scale_step(const hk_pointer_state_t* state) {
         case POINTER_KIND_CIRQUE40:
             return .1;
         case POINTER_KIND_TPS43:
+        case POINTER_KIND_TPS65:
             return .1;
         default:
             // Should never happen
@@ -390,6 +417,12 @@ static void hk_cycle_scroll_mode(bool side_peripheral) {
     g_hk_state.dirty = true;
 }
 
+static void hk_invert_scroll_direction(bool side_peripheral) {
+    hk_pointer_state_t* state = side_peripheral ? &g_hk_state.peripheral : &g_hk_state.main;
+    state->scroll_direction_inverted = !state->scroll_direction_inverted;
+    g_hk_state.dirty = true;
+}
+
 void hk_process_mouse_report(const hk_pointer_state_t* pointer_state, report_mouse_t* mouse_report) {
     #ifdef ENABLE_DRIFT_DETECTION
         #ifndef POINTING_DEVICE_CONFIGURATION_TRACKPOINT
@@ -418,8 +451,8 @@ void hk_process_mouse_report(const hk_pointer_state_t* pointer_state, report_mou
 
     // First, scale the mouse movement.
     const report_mouse_t mouse_report_copy = *mouse_report;
-    const float new_x = scale_movement(pointer_state, mouse_report->x);
-    const float new_y = scale_movement(pointer_state, mouse_report->y);
+    const float new_x = scale_movement(pointer_state, mouse_report->x) + rounding_carry_x;
+    const float new_y = scale_movement(pointer_state, mouse_report->y) + rounding_carry_y;
 
     // Accumulate any difference from next integer (quantization).
     rounding_carry_x = new_x - (int)new_x;
@@ -444,26 +477,16 @@ void hk_process_mouse_report(const hk_pointer_state_t* pointer_state, report_mou
     g_hk_state.dirty = true;
 }
 
-report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
-    if (!g_hk_state.is_main_side) {
-        return pointing_device_task_keymap(mouse_report);
-    }
-
-    // We get here only on the main side.
-    hk_process_mouse_report(&g_hk_state.main, &mouse_report);
-    g_hk_state.display.last_mouse = mouse_report;
-
-    return pointing_device_task_keymap(mouse_report);
-}
-
 #if defined(SPLIT_POINTING_ENABLE) && defined(POINTING_DEVICE_COMBINED)
+
 report_mouse_t pointing_device_task_combined_user(report_mouse_t left_report, report_mouse_t right_report) {
+    // pointing_device_task_* is entered only on the main side, ensure that.
     if (!g_hk_state.is_main_side) {
         report_mouse_t report = pointing_device_combine_reports(left_report, right_report);
         return pointing_device_task_combined_keymap(report);
     }
 
-    // We get here only on the main side. Use is_keyboard_left to know which report is main and which is peripheral.
+    // Use is_keyboard_left to know which report is main and which is peripheral.
     hk_process_mouse_report(&g_hk_state.main, is_keyboard_left() ? &left_report : &right_report);
     hk_process_mouse_report(&g_hk_state.peripheral, is_keyboard_left() ? &right_report : &left_report);
 
@@ -471,6 +494,21 @@ report_mouse_t pointing_device_task_combined_user(report_mouse_t left_report, re
     g_hk_state.display.last_mouse = report;
     return pointing_device_task_combined_keymap(report);
 }
+
+#else
+
+report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
+    // pointing_device_task_* is entered only on the main side, ensure that.
+    if (!g_hk_state.is_main_side) {
+        return pointing_device_task_keymap(mouse_report);
+    }
+
+    hk_process_mouse_report(&g_hk_state.main, &mouse_report);
+    g_hk_state.display.last_mouse = mouse_report;
+
+    return pointing_device_task_keymap(mouse_report);
+}
+
 #endif
 
 // clang-format off
@@ -560,12 +598,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
             break;
         case HK_POINTER_SET_DEFAULT_SCALER:
             g_hk_state.setting_default_scale = record->event.pressed;
+            // state_changed = true;
             break;
         case HK_POINTER_SET_SNIPING_SCALER:
             g_hk_state.setting_sniping_scale = record->event.pressed;
+            // state_changed = true;
             break;
         case HK_POINTER_SET_SCROLL_BUFFER:
             g_hk_state.setting_scroll_buffer = record->event.pressed;
+            // state_changed = true;
             break;
         case HK_SNIPING_MODE:
             hk_set_cursor_mode(/*mode=*/CURSOR_MODE_SNIPING, /*enabled=*/record->event.pressed, /*side_peripheral=*/has_shift_mod());
@@ -595,9 +636,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
                 state_changed = true;
             }
             break;
+        case HK_INVERT_SCROLL_DIRECTION:
+            if (record->event.pressed) {
+                hk_invert_scroll_direction(/*side_peripheral=*/has_shift_mod());
+                state_changed = true;
+            }
+            break;
+
     }
     if (state_changed) {
         debug_hk_state_to_console(&g_hk_state);
+        // write_eeconfig();
     }
     return propagate_event;
 }
@@ -664,13 +713,23 @@ void keyboard_post_init_user(void) {
 
     memset(&hk_eeprom_config, 0, sizeof(hk_eeprom_config_t));
     eeconfig_read_user_datablock(&hk_eeprom_config, 0, sizeof(hk_eeprom_config_t));
-    printf("keyboard_post_init_user: reading eeprom, check: %u\n", hk_eeprom_config.check);
-    if (!eeconfig_is_user_datablock_valid() || !hk_eeprom_config.check) {
+    printf("keyboard_post_init_user: reading eeprom, check: %u, version: %u\n", hk_eeprom_config.check, hk_eeprom_config.version);
+    if (!eeconfig_is_user_datablock_valid() || !hk_eeprom_config.check || hk_eeprom_config.version < 101) {
+        // Before version 101, reset the eeprom config to pick up current pointer defaults.
+        if (hk_eeprom_config.version < 101) {
+            printf("keyboard_post_init_user: eeprom version not found (%u), resetting to defaults\n", hk_eeprom_config.version);
+        } else if (!hk_eeprom_config.check) {
+            printf("keyboard_post_init_user: eeprom check failed, resetting to defaults\n");
+        }
         printf("keyboard_post_init_user: eeprom data not found, initializing\n");
         eeconfig_init_user();
     } else {
         g_hk_state = init_state();
         deserialize_eeconfig_to_state(&hk_eeprom_config);
+        if (g_hk_state.peripheral.pointer_kind == POINTER_KIND_PIMORONI_TRACKBALL) {
+            g_hk_state.peripheral.drag_scroll = true;
+            g_hk_state.peripheral.scroll_direction_inverted = true;
+        }
         debug_hk_state_to_console(&g_hk_state);
     }
 
@@ -684,6 +743,7 @@ void                       eeconfig_init_user(void) {
 
     memset(&hk_eeprom_config, 0, sizeof(hk_eeprom_config_t));
     hk_eeprom_config.check = true;
+    hk_eeprom_config.version = 101; // Increment this when changing pointer defaults or the eeprom config structure.
     serialize_state_to_eeconfig(&hk_eeprom_config);
 
     eeconfig_init_keymap();
