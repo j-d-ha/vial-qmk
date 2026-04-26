@@ -263,6 +263,18 @@ static hk_state_t init_state(void) {
     return state;
 }
 
+static void hk_set_local_trackball_led_off(void) {
+#if defined(POINTING_DEVICE_DRIVER_pimoroni_trackball)
+    pimoroni_trackball_set_rgbw(0x00, 0x00, 0x00, 0x00);
+#endif
+}
+
+static void hk_set_local_trackball_led_red(void) {
+#if defined(POINTING_DEVICE_DRIVER_pimoroni_trackball)
+    pimoroni_trackball_set_rgbw(0xFF, 0x00, 0x00, 0x00);
+#endif
+}
+
 static bool has_shift_mod(void) {
 #        ifdef NO_ACTION_ONESHOT
     return mod_config(get_mods()) & MOD_MASK_SHIFT;
@@ -712,7 +724,17 @@ void housekeeping_task_user(void) {
 #endif
 }
 
+void suspend_power_down_user(void) {
+    hk_set_local_trackball_led_off();
+}
+
+void suspend_wakeup_init_user(void) {
+    hk_set_local_trackball_led_red();
+}
+
 void keyboard_post_init_user(void) {
+    hk_set_local_trackball_led_red();
+
     if (!is_keyboard_master()) {
         #ifdef HK_SPLIT_SYNC_STATE
             transaction_register_rpc(HK_SYNC_STATE, hk_rpc_sync_state);
