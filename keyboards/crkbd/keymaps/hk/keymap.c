@@ -9,6 +9,8 @@ enum layers {
     _SYM,
     _NAV,
     _HK,
+    _EXT1,
+    _EXT2,
 };
 
 #ifdef VIAL_COMBO_ENABLE
@@ -110,10 +112,22 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
                                                       KC_TRNS,          MO(_HK),         KC_BSPC,           KC_NO,            KC_TRNS,          KC_TRNS),
 
     [_HK] = LAYOUT_split_3x6_3(
-        KC_TRNS, LCA(KC_UP),       LCA(KC_LEFT),     MEH(KC_DOWN),     LCA(KC_RGHT),     LCA(KC_ENT),       KC_NO,            KC_NO,            KC_NO,            KC_NO,            KC_NO,             KC_NO,
-        KC_NO,   LCA(KC_DOWN),     LCA(KC_D),        LCA(KC_F),        LCA(KC_G),        LCAG(KC_RGHT),     KC_NO,            KC_NO,            KC_NO,            LCTL(LGUI(KC_Q)), KC_NO,             KC_NO,
-        KC_NO,   MEH(KC_UP),       LCA(KC_E),        LCA(KC_R),        LCA(KC_T),        LCAG(KC_LEFT),     KC_NO,            KC_NO,            KC_NO,            KC_NO,            KC_NO,             KC_NO,
-                                                      KC_TRNS,          KC_TRNS,         KC_NO,             KC_NO,            KC_TRNS,          KC_TRNS)
+        KC_TRNS, LCA(KC_UP),       LCA(KC_LEFT),     MEH(KC_DOWN),     LCA(KC_RGHT),     LCA(KC_ENT),       KC_NO,            QK_MACRO_3,       QK_MACRO_4,       QK_MACRO_5,       QK_MACRO_6,        KC_NO,
+        KC_SLEP, LCA(KC_DOWN),     LCA(KC_D),        LCA(KC_F),        LCA(KC_G),        LCAG(KC_RGHT),     KC_NO,            QK_MACRO_2,       QK_MACRO_0,       QK_MACRO_1,       QK_MACRO_7,        KC_NO,
+        TD(1),   MEH(KC_UP),       LCA(KC_E),        LCA(KC_R),        LCA(KC_T),        LCAG(KC_LEFT),     KC_NO,            QK_MACRO_8,       QK_MACRO_9,       KC_NO,            KC_NO,             KC_NO,
+                                                      KC_TRNS,          KC_TRNS,         KC_NO,             KC_NO,            KC_TRNS,          KC_TRNS),
+
+    [_EXT1] = LAYOUT_split_3x6_3(
+        KC_TRNS, KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,
+        KC_TRNS, KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,
+        KC_TRNS, KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,
+                                                      KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,          KC_TRNS,          KC_TRNS),
+
+    [_EXT2] = LAYOUT_split_3x6_3(
+        KC_TRNS, KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,
+        KC_TRNS, KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,
+        KC_TRNS, KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,
+                                                      KC_TRNS,          KC_TRNS,          KC_TRNS,           KC_TRNS,          KC_TRNS,          KC_TRNS)
 };
 
 #ifdef ENCODER_MAP_ENABLE
@@ -122,6 +136,8 @@ const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
     [_SYM]  = {ENCODER_CCW_CW(KC_VOLD, KC_VOLU), ENCODER_CCW_CW(KC_MPRV, KC_MNXT), ENCODER_CCW_CW(KC_PGDN, KC_PGUP), ENCODER_CCW_CW(KC_RGHT, KC_LEFT)},
     [_NAV]  = {ENCODER_CCW_CW(KC_VOLD, KC_VOLU), ENCODER_CCW_CW(KC_MPRV, KC_MNXT), ENCODER_CCW_CW(KC_PGDN, KC_PGUP), ENCODER_CCW_CW(KC_RGHT, KC_LEFT)},
     [_HK]   = {ENCODER_CCW_CW(KC_VOLD, KC_VOLU), ENCODER_CCW_CW(KC_MPRV, KC_MNXT), ENCODER_CCW_CW(KC_UP,   KC_DOWN), ENCODER_CCW_CW(KC_RGHT, KC_LEFT)},
+    [_EXT1] = {ENCODER_CCW_CW(KC_VOLD, KC_VOLU), ENCODER_CCW_CW(KC_MPRV, KC_MNXT), ENCODER_CCW_CW(KC_PGDN, KC_PGUP), ENCODER_CCW_CW(KC_RGHT, KC_LEFT)},
+    [_EXT2] = {ENCODER_CCW_CW(KC_VOLD, KC_VOLU), ENCODER_CCW_CW(KC_MPRV, KC_MNXT), ENCODER_CCW_CW(KC_PGDN, KC_PGUP), ENCODER_CCW_CW(KC_RGHT, KC_LEFT)},
 };
 #endif
 

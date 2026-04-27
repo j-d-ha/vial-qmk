@@ -28,5 +28,19 @@
       ]
   },
   "vial_protocol": 6,
-  "via_protocol": 9
+  "via_protocol": 9,
+  "customKeycodes": [
+    {"name": "HK Save",    "title": "Save HK settings to EEPROM",          "shortName": "HKSave"},
+    {"name": "HK Reset",   "title": "Reset HK settings to defaults",        "shortName": "HKRst"},
+    {"name": "HK Dump",    "title": "Dump HK settings to console",          "shortName": "HKDmp"},
+    {"name": "HK SpeedD",  "title": "Hold + Up/Down to set default speed",  "shortName": "HKSpD"},
+    {"name": "HK SpeedS",  "title": "Hold + Up/Down to set sniping speed",  "shortName": "HKSpS"},
+    {"name": "HK Buf",     "title": "Hold + Up/Down to set scroll buffer",  "shortName": "HKBuf"},
+    {"name": "HK Snipe",   "title": "Sniping mode (momentary)",             "shortName": "HKSnp"},
+    {"name": "HK SnipeT",  "title": "Sniping mode toggle",                  "shortName": "HKSnT"},
+    {"name": "HK Drag",    "title": "Drag scroll (momentary)",              "shortName": "HKDrg"},
+    {"name": "HK DragT",   "title": "Drag scroll toggle",                   "shortName": "HKDgT"},
+    {"name": "HK ScrLck",  "title": "Cycle scroll lock (off/H/V)",          "shortName": "HKSL"},
+    {"name": "HK InvScr",  "title": "Invert scroll direction",              "shortName": "HKIS"}
+  ]
 }
