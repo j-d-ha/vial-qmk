@@ -41,6 +41,9 @@
     {"name": "HK Drag",    "title": "Drag scroll (momentary)",              "shortName": "HKDrg"},
     {"name": "HK DragT",   "title": "Drag scroll toggle",                   "shortName": "HKDgT"},
     {"name": "HK ScrLck",  "title": "Cycle scroll lock (off/H/V)",          "shortName": "HKSL"},
-    {"name": "HK InvScr",  "title": "Invert scroll direction",              "shortName": "HKIS"}
+    {"name": "HK InvScr",  "title": "Invert scroll direction",              "shortName": "HKIS"},
+    {"name": "AC On",      "title": "Enable autocorrect",                   "shortName": "ACon"},
+    {"name": "AC Off",     "title": "Disable autocorrect",                  "shortName": "ACoff"},
+    {"name": "AC Toggle",  "title": "Toggle autocorrect",                   "shortName": "ACtogg"}
   ]
 }

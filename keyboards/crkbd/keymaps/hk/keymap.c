@@ -114,7 +114,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_HK] = LAYOUT_split_3x6_3(
         KC_TRNS, LCA(KC_UP),       LCA(KC_LEFT),     MEH(KC_DOWN),     LCA(KC_RGHT),     LCA(KC_ENT),       KC_NO,            QK_MACRO_3,       QK_MACRO_4,       QK_MACRO_5,       QK_MACRO_6,        KC_NO,
         KC_SLEP, LCA(KC_DOWN),     LCA(KC_D),        LCA(KC_F),        LCA(KC_G),        LCAG(KC_RGHT),     KC_NO,            QK_MACRO_2,       QK_MACRO_0,       QK_MACRO_1,       QK_MACRO_7,        KC_NO,
-        TD(1),   MEH(KC_UP),       LCA(KC_E),        LCA(KC_R),        LCA(KC_T),        LCAG(KC_LEFT),     KC_NO,            QK_MACRO_8,       QK_MACRO_9,       KC_NO,            KC_NO,             KC_NO,
+        TD(1),   MEH(KC_UP),       LCA(KC_E),        LCA(KC_R),        LCA(KC_T),        LCAG(KC_LEFT),     KC_NO,            QK_MACRO_8,       QK_MACRO_9,       HK_AC_TOGGLE,     HK_AC_ON,          HK_AC_OFF,
                                                       KC_TRNS,          KC_TRNS,         KC_NO,             KC_NO,            KC_TRNS,          KC_TRNS),
 
     [_EXT1] = LAYOUT_split_3x6_3(
@@ -140,6 +140,29 @@ const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
     [_EXT2] = {ENCODER_CCW_CW(KC_VOLD, KC_VOLU), ENCODER_CCW_CW(KC_MPRV, KC_MNXT), ENCODER_CCW_CW(KC_PGDN, KC_PGUP), ENCODER_CCW_CW(KC_RGHT, KC_LEFT)},
 };
 #endif
+
+#ifdef AUTOCORRECT_ENABLE
+#include "process_keycode/process_autocorrect.h"
+#endif
+
+#ifdef AUTO_SHIFT_ENABLE
+#include "process_keycode/process_auto_shift.h"
+bool get_custom_auto_shifted_key(uint16_t keycode, keyrecord_t *record) {
+    return IS_RETRO(keycode);
+}
+#endif
+
+bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
+    if (!record->event.pressed) return true;
+#ifdef AUTOCORRECT_ENABLE
+    switch (keycode) {
+        case HK_AC_ON:     autocorrect_enable();  return false;
+        case HK_AC_OFF:    autocorrect_disable(); return false;
+        case HK_AC_TOGGLE: autocorrect_toggle();  return false;
+    }
+#endif
+    return true;
+}
 
 void eeconfig_init_keymap(void) {
 #ifdef VIAL_COMBO_ENABLE

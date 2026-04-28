@@ -46,6 +46,11 @@ enum hk_keycodes {
 
     // Inverts the scroll direction.
     HK_INVERT_SCROLL_DIRECTION, // 0x7E0B
+
+    // Autocorrect control.
+    HK_AC_ON,     // 0x7E0C
+    HK_AC_OFF,    // 0x7E0D
+    HK_AC_TOGGLE, // 0x7E0E
 };
 
 #define HK_SAVE      HK_SAVE_SETTINGS
@@ -60,6 +65,7 @@ enum hk_keycodes {
 #define HK_D_MODE_T  HK_DRAGSCROLL_MODE_TOGGLE
 #define HK_C_SCROLL  HK_CYCLE_SCROLL_LOCK
 #define HK_I_SCROLL  HK_INVERT_SCROLL_DIRECTION
+#define HK_AC_TOG    HK_AC_TOGGLE
 
 // #define ENABLE_DRIFT_DETECTION
 // #define ENABLE_PIMORONI_ADAPTIVE_MOTION

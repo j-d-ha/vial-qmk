@@ -177,7 +177,7 @@ void action_tapping_process(keyrecord_t record) {
 
 #    if defined(AUTO_SHIFT_ENABLE) && defined(RETRO_SHIFT)
 #        ifdef RETRO_TAPPING_PER_KEY
-#            define TAP_GET_RETRO_TAPPING(keyp) get_auto_shifted_key(tapping_keycode, keyp) && get_retro_tapping(tapping_keycode, &tapping_key)
+#            define TAP_GET_RETRO_TAPPING(keyp) (get_auto_shifted_key(tapping_keycode, keyp) && get_retro_tapping(tapping_keycode, &tapping_key))
 #        else
 #            define TAP_GET_RETRO_TAPPING(keyp) get_auto_shifted_key(tapping_keycode, keyp)
 #        endif
