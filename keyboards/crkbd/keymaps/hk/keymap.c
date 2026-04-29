@@ -15,7 +15,7 @@ enum layers {
 
 #ifdef VIAL_COMBO_ENABLE
 #define HK_COMBO_MIGRATION_MAGIC   0x484B434DUL
-#define HK_COMBO_MIGRATION_VERSION 2
+#define HK_COMBO_MIGRATION_VERSION 3
 
 typedef struct {
     uint32_t magic;
@@ -138,17 +138,19 @@ static void hk_migrate_vial_data_if_needed(void) {
         return;
     }
 
-    if (!hk_any_vial_combos_configured()) {
+    bool fresh = (config.magic != HK_COMBO_MIGRATION_MAGIC);
+
+    if (!fresh || !hk_any_vial_combos_configured()) {
         hk_reset_vial_combos();
     }
 
 #ifdef VIAL_TAP_DANCE_ENABLE
-    if (!hk_any_vial_tap_dances_configured()) {
+    if (!fresh || !hk_any_vial_tap_dances_configured()) {
         hk_reset_vial_tap_dances();
     }
 #endif
 
-    if (!hk_any_vial_macros_configured()) {
+    if (!fresh || !hk_any_vial_macros_configured()) {
         hk_reset_vial_macros();
     }
 
