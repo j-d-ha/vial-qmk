@@ -15,7 +15,7 @@ enum layers {
 
 #ifdef VIAL_COMBO_ENABLE
 #define HK_COMBO_MIGRATION_MAGIC   0x484B434DUL
-#define HK_COMBO_MIGRATION_VERSION 3
+#define HK_COMBO_MIGRATION_VERSION 4
 
 typedef struct {
     uint32_t magic;
@@ -79,14 +79,64 @@ static void hk_reset_vial_macros(void) {
     dynamic_keymap_macro_set_buffer(0, sizeof(hk_default_macros), (uint8_t *)hk_default_macros);
 }
 
+/*
+ * Vial combo entries do not carry layer masks. These action combos use output
+ * KC_NO, so process_combo_event() can choose macOS or Windows behavior by
+ * default base layer. Entries 0-5 are macOS; entries 6-11 are Windows.
+ */
 static const vial_combo_entry_t hk_default_combos[] = {
-    {{KC_C, KC_V, KC_NO, KC_NO}, LGUI(KC_V)},
-    {{KC_X, KC_C, KC_NO, KC_NO}, LGUI(KC_C)},
-    {{KC_X, KC_C, KC_V, KC_NO}, SGUI(KC_C)},
-    {{KC_Z, KC_X, KC_NO, KC_NO}, LGUI(KC_Z)},
-    {{KC_Z, KC_X, KC_C, KC_NO}, SGUI(KC_Z)},
-    {{KC_Z, KC_C, KC_NO, KC_NO}, LGUI(KC_X)},
+    {{KC_C, KC_V, KC_NO, KC_NO}, KC_NO},
+    {{KC_X, KC_C, KC_NO, KC_NO}, KC_NO},
+    {{KC_X, KC_C, KC_V, KC_NO}, KC_NO},
+    {{KC_Z, KC_X, KC_NO, KC_NO}, KC_NO},
+    {{KC_Z, KC_X, KC_C, KC_NO}, KC_NO},
+    {{KC_Z, KC_C, KC_NO, KC_NO}, KC_NO},
+    {{KC_C, KC_V, KC_NO, KC_NO}, KC_NO},
+    {{KC_X, KC_C, KC_NO, KC_NO}, KC_NO},
+    {{KC_X, KC_C, KC_V, KC_NO}, KC_NO},
+    {{KC_Z, KC_X, KC_NO, KC_NO}, KC_NO},
+    {{KC_Z, KC_X, KC_C, KC_NO}, KC_NO},
+    {{KC_Z, KC_C, KC_NO, KC_NO}, KC_NO},
 };
+
+static bool hk_windows_base_active(void) {
+    return (default_layer_state & ((layer_state_t)1 << 6)) != 0;
+}
+
+bool combo_should_trigger(uint16_t combo_index, combo_t *combo, uint16_t keycode, keyrecord_t *record) {
+    (void)combo;
+    (void)keycode;
+    (void)record;
+
+    if (combo_index < 6) {
+        return !hk_windows_base_active();
+    }
+    if (combo_index < 12) {
+        return hk_windows_base_active();
+    }
+    return true;
+}
+
+void process_combo_event(uint16_t combo_index, bool pressed) {
+    if (!pressed || combo_index >= 12) {
+        return;
+    }
+
+    static const uint16_t macos_actions[] = {
+        LGUI(KC_V), LGUI(KC_C), SGUI(KC_C),
+        LGUI(KC_Z), SGUI(KC_Z), LGUI(KC_X),
+    };
+    static const uint16_t windows_actions[] = {
+        LCTL(KC_V), LCTL(KC_C), LGUI(KC_V),
+        LCTL(KC_Z), LCTL(KC_Y), LCTL(KC_X),
+    };
+
+    if (combo_index < 6) {
+        tap_code16(macos_actions[combo_index]);
+    } else {
+        tap_code16(windows_actions[combo_index - 6]);
+    }
+}
 
 static void hk_reset_vial_combos(void) {
     const size_t combo_count = sizeof(hk_default_combos) / sizeof(hk_default_combos[0]);
@@ -222,13 +272,14 @@ bool get_custom_auto_shifted_key(uint16_t keycode, keyrecord_t *record) {
 
 bool process_record_keymap(uint16_t keycode, keyrecord_t *record) {
     if (!record->event.pressed) return true;
-#ifdef AUTOCORRECT_ENABLE
+
     switch (keycode) {
+#ifdef AUTOCORRECT_ENABLE
         case HK_AC_ON:     autocorrect_enable();  return false;
         case HK_AC_OFF:    autocorrect_disable(); return false;
         case HK_AC_TOGGLE: autocorrect_toggle();  return false;
-    }
 #endif
+    }
     return true;
 }
 
